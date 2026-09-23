@@ -36,16 +36,28 @@ const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTI
 let DATA_DIR;
 if (isServerless) {
     DATA_DIR = path.join('/tmp', 'data');
+    try {
+        if (!fs.existsSync(DATA_DIR)) {
+            fs.mkdirSync(DATA_DIR, { recursive: true });
+        }
+        const sourceDb = path.join(__dirname, 'data', 'pos.sqlite');
+        const targetDb = path.join(DATA_DIR, 'pos.sqlite');
+        if (fs.existsSync(sourceDb) && !fs.existsSync(targetDb)) {
+            fs.copyFileSync(sourceDb, targetDb);
+            console.log('📦 [Database] Cloned pre-seeded pos.sqlite to /tmp/data for Vercel');
+        }
+    } catch (err) {
+        DATA_DIR = '/tmp';
+    }
 } else {
     DATA_DIR = path.join(__dirname, 'data');
-}
-
-try {
-    if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
+    try {
+        if (!fs.existsSync(DATA_DIR)) {
+            fs.mkdirSync(DATA_DIR, { recursive: true });
+        }
+    } catch (err) {
+        DATA_DIR = '/tmp';
     }
-} catch (err) {
-    DATA_DIR = '/tmp';
 }
 
 const DB_PATH = path.join(DATA_DIR, 'pos.sqlite');

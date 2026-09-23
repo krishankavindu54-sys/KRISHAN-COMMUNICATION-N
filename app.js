@@ -741,37 +741,37 @@ const app = {
                 if (payload && payload.success && payload.data) {
                     const data = payload.data;
 
-                    if (Array.isArray(data.items)) {
+                    if (Array.isArray(data.items) && data.items.length > 0) {
                         await db.items.clear();
-                        if (data.items.length > 0) await db.items.bulkPut(data.items);
+                        await db.items.bulkPut(data.items);
                     }
-                    if (Array.isArray(data.sales)) {
+                    if (Array.isArray(data.sales) && data.sales.length > 0) {
                         await db.sales.clear();
-                        if (data.sales.length > 0) await db.sales.bulkPut(data.sales);
+                        await db.sales.bulkPut(data.sales);
                     }
-                    if (Array.isArray(data.repairs)) {
+                    if (Array.isArray(data.repairs) && data.repairs.length > 0) {
                         await db.repairs.clear();
-                        if (data.repairs.length > 0) await db.repairs.bulkPut(data.repairs);
+                        await db.repairs.bulkPut(data.repairs);
                     }
-                    if (Array.isArray(data.expenses)) {
+                    if (Array.isArray(data.expenses) && data.expenses.length > 0) {
                         await db.expenses.clear();
-                        if (data.expenses.length > 0) await db.expenses.bulkPut(data.expenses);
+                        await db.expenses.bulkPut(data.expenses);
                     }
-                    if (Array.isArray(data.creditors)) {
+                    if (Array.isArray(data.creditors) && data.creditors.length > 0) {
                         await db.creditors.clear();
-                        if (data.creditors.length > 0) await db.creditors.bulkPut(data.creditors);
+                        await db.creditors.bulkPut(data.creditors);
                     }
-                    if (Array.isArray(data.bankTransactions)) {
+                    if (Array.isArray(data.bankTransactions) && data.bankTransactions.length > 0) {
                         await db.bankTransactions.clear();
-                        if (data.bankTransactions.length > 0) await db.bankTransactions.bulkPut(data.bankTransactions);
+                        await db.bankTransactions.bulkPut(data.bankTransactions);
                     }
-                    if (Array.isArray(data.suppliers)) {
+                    if (Array.isArray(data.suppliers) && data.suppliers.length > 0) {
                         await db.suppliers.clear();
-                        if (data.suppliers.length > 0) await db.suppliers.bulkPut(data.suppliers);
+                        await db.suppliers.bulkPut(data.suppliers);
                     }
-                    if (Array.isArray(data.purchaseBills)) {
+                    if (Array.isArray(data.purchaseBills) && data.purchaseBills.length > 0) {
                         await db.purchaseBills.clear();
-                        if (data.purchaseBills.length > 0) await db.purchaseBills.bulkPut(data.purchaseBills);
+                        await db.purchaseBills.bulkPut(data.purchaseBills);
                     }
                     if (data.settings) {
                         for (const k in data.settings) {
@@ -1272,11 +1272,51 @@ const app = {
         }
     },
 
+    ensureInitialData: async () => {
+        try {
+            const count = await db.items.count();
+            if (count === 0) {
+                // Try fetching items from backend first
+                try {
+                    const res = await fetch(app.getApiUrl('/api/items'), {
+                        headers: app.getAuthHeaders(),
+                        credentials: 'include'
+                    });
+                    if (res.ok) {
+                        const serverItems = await res.json();
+                        if (Array.isArray(serverItems) && serverItems.length > 0) {
+                            await db.items.bulkPut(serverItems);
+                            console.log('📦 [Dexie] Seeded catalog from backend API:', serverItems.length, 'items');
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    // Backend unavailable or offline
+                }
+
+                // Default starter inventory fallback
+                const starterItems = [
+                    { id: 1, name: "Photocopy (A4)", category: "Service", type: "service", price: 10, cost: 2, barcode: "SERV001", stock: 0, minStock: 0 },
+                    { id: 2, name: "Passport Photo", category: "Studio", type: "service", price: 350, cost: 50, barcode: "SERV002", stock: 0, minStock: 0 },
+                    { id: 3, name: "Tempered Glass", category: "Accessories", type: "product", price: 500, cost: 150, barcode: "ACC001", stock: 25, minStock: 5 },
+                    { id: 4, name: "CR Books", category: "Stationery", type: "product", price: 250, cost: 180, barcode: "STAT001", stock: 50, minStock: 10 }
+                ];
+                await db.items.bulkPut(starterItems);
+                console.log('📦 [Dexie] Seeded default starter inventory');
+            }
+        } catch (err) {
+            console.warn('ensureInitialData error:', err);
+        }
+    },
+
     init: async () => {
         try {
             app.updateDateTime();
             setInterval(app.updateDateTime, 1000);
             app.initTheme();
+
+            // 0. Ensure catalog has starter/server data immediately
+            await app.ensureInitialData();
 
             // 1. Initialize Realtime Engine
             app.realtime.init();
@@ -1294,6 +1334,9 @@ const app = {
             } catch (syncErr) {
                 console.warn('Backend sync skipped/failed:', syncErr);
             }
+
+            // 4. Ensure again that items exist if sync returned empty
+            await app.ensureInitialData();
 
             app.updateShopProfileHeader();
             app.navigate('dashboard');
@@ -2436,6 +2479,7 @@ const app = {
 
     // --- DASHBOARD ---
     renderDashboard: async () => {
+        await app.ensureInitialData();
         const today = new Date().toISOString().split('T')[0];
         const salesToday = await db.sales.where('date').startsWith(today).toArray();
         const totalRevenue = salesToday.reduce((sum, sale) => sum + sale.total, 0);
@@ -2573,7 +2617,11 @@ const app = {
 
     renderPOS: async () => {
         try {
-            const items = await db.items.toArray();
+            let items = await db.items.toArray();
+            if (items.length === 0) {
+                await app.ensureInitialData();
+                items = await db.items.toArray();
+            }
             const creditors = await db.creditors.where('type').equals('receivable').toArray();
             const categories = [...new Set(items.map(item => item.category))].sort();
             const settingsList = await db.categorySettings.toArray();
@@ -3507,7 +3555,11 @@ const app = {
 
     // --- INVENTORY ---
     renderInventory: async () => {
-        const items = await db.items.toArray();
+        let items = await db.items.toArray();
+        if (items.length === 0) {
+            await app.ensureInitialData();
+            items = await db.items.toArray();
+        }
         const categories = ['All', ...new Set(items.map(item => item.category))];
         const settingsList = await db.categorySettings.toArray();
         const categoryMap = settingsList.reduce((acc, curr) => {

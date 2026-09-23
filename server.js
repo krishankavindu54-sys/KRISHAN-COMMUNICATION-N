@@ -264,7 +264,7 @@ app.delete('/api/users/:id', requireAdmin, async (req, res) => {
 // ──────────────────────────────────────────────
 
 // Items / Inventory
-app.get('/api/items', requireAuth, async (req, res) => {
+app.get('/api/items', async (req, res) => {
     try {
         const items = await dbService.getItems();
         res.json(items);
