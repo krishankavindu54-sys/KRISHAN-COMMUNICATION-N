@@ -19,3 +19,8 @@ yarn-error.log*
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Temporary upload bundles
+github-upload/
+*.zip
+
