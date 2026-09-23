@@ -353,7 +353,7 @@ function formatPurchaseBill(row) {
         billNumber: row.bill_number || row.billNumber || '',
         date: row.date || new Date().toISOString(),
         totalAmount: Number(row.total_amount !== undefined ? row.total_amount : (row.totalAmount || 0)),
-        status: bill.status || 'pending',
+        status: row.status || 'pending',
         items
     };
 }

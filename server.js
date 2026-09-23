@@ -68,6 +68,16 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
+
+// Serverless / Vercel path normalization
+app.use((req, res, next) => {
+    const matchedPath = req.headers['x-matched-path'] || req.headers['x-forwarded-uri'];
+    if (matchedPath && matchedPath.startsWith('/api') && (req.url === '/api/index.js' || !req.url.startsWith('/api'))) {
+        req.url = matchedPath;
+    }
+    next();
+});
+
 app.use(express.static(__dirname));
 
 // JWT Helpers
