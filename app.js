@@ -131,7 +131,9 @@ const app = {
         init: () => {
             app.realtime.startKeepAlive();
             const serverUrl = app.getServerUrl();
-            const isVercel = window.location.hostname.includes('vercel.app');
+            const isVercel = window.location.hostname.includes('vercel.app') || 
+                             window.location.hostname.includes('vercel') ||
+                             (window.location.protocol === 'https:' && !window.location.hostname.includes('localhost'));
             const isGitHubPages = window.location.hostname.endsWith('github.io');
 
             // On Vercel (Serverless REST cloud), start Cloud REST Polling Sync immediately
@@ -215,17 +217,22 @@ const app = {
             }
         },
 
-        // Cloud Keep-Alive: Sends ping every 25 seconds to prevent free cloud instances (Render/Vercel) from sleeping
+        // Cloud Keep-Alive: Sends ping for persistent VPS/Render servers (skipped on Vercel serverless)
         startKeepAlive: () => {
             if (app.realtime.keepAliveInterval) clearInterval(app.realtime.keepAliveInterval);
+            // Serverless platforms like Vercel do not require keepalive pings
+            const isVercel = window.location.hostname.includes('vercel');
+            if (isVercel) return;
+
             app.realtime.keepAliveInterval = setInterval(async () => {
+                if (!localStorage.getItem('pos_token')) return; // Only ping if authenticated
                 const targetUrl = app.getApiUrl('/api/auth/me');
                 try {
                     await fetch(targetUrl, { method: 'GET', headers: app.getAuthHeaders(), credentials: 'include' });
                 } catch (e) {
                     // Ignore background ping errors
                 }
-            }, 25000);
+            }, 30000);
         },
 
         // HTTP Cloud Polling Fallback (ensures Vercel Serverless / Free Cloud stays 100% Live with realtime stock sync)

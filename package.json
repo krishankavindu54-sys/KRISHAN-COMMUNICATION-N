@@ -12,7 +12,7 @@
     "icons": "node create-icons.js"
   },
   "engines": {
-    "node": "22.x"
+    "node": ">=20.0.0"
   },
   "keywords": [
     "pos",

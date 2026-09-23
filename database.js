@@ -16,7 +16,10 @@ const SUPABASE_KEY = (process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY 
 let supabase = null;
 let cloudSyncActive = false;
 
-if (SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.startsWith('http')) {
+// Check if this is the defunct placeholder test domain to avoid DNS errors on startup
+const isPlaceholderSupabase = SUPABASE_URL.includes('dzuycbqcltmlrktiszby');
+
+if (!isPlaceholderSupabase && SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.startsWith('http')) {
     try {
         const { createClient } = require('@supabase/supabase-js');
         supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -45,6 +48,12 @@ if (isServerless) {
         if (fs.existsSync(sourceDb) && !fs.existsSync(targetDb)) {
             fs.copyFileSync(sourceDb, targetDb);
             console.log('📦 [Database] Cloned pre-seeded pos.sqlite to /tmp/data for Vercel');
+        }
+        const sourceJson = path.join(__dirname, 'data', 'pos.json');
+        const targetJson = path.join(DATA_DIR, 'pos.json');
+        if (fs.existsSync(sourceJson) && !fs.existsSync(targetJson)) {
+            fs.copyFileSync(sourceJson, targetJson);
+            console.log('📦 [Database] Cloned pre-seeded pos.json to /tmp/data for Vercel');
         }
     } catch (err) {
         DATA_DIR = '/tmp';
@@ -266,11 +275,11 @@ function initDatabase() {
 async function checkCloudConnection() {
     if (!supabase) return;
     try {
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timed out')), 2500));
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timed out')), 1000));
         const testQuery = supabase.from('users').select('id').limit(1);
         const { error } = await Promise.race([testQuery, timeoutPromise]);
         if (error) {
-            console.warn('⚠️ [Cloud DB] Cloud DB returned error, active in Local SQLite mode:', error.message);
+            console.warn('ℹ️ [Cloud DB] Cloud DB not reachable, active in Local / Serverless mode:', error.message);
             cloudSyncActive = false;
         } else {
             console.log('⚡ [Cloud DB] Supabase Cloud Database is ONLINE and synced.');
@@ -278,7 +287,7 @@ async function checkCloudConnection() {
             await seedCloudIfEmpty();
         }
     } catch (err) {
-        console.warn('⚠️ [Cloud DB] Could not reach Supabase (' + err.message + '). Active in Local SQLite mode.');
+        console.warn('ℹ️ [Cloud DB] Cloud connection check finished (' + err.message + '). Active in Local / Serverless mode.');
         cloudSyncActive = false;
     }
 }

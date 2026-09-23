@@ -71,12 +71,15 @@ app.use(cookieParser());
 
 // Serverless / Vercel path normalization
 app.use((req, res, next) => {
-    const matchedPath = req.headers['x-matched-path'] || req.headers['x-forwarded-uri'];
-    if (matchedPath && matchedPath.startsWith('/api') && (req.url === '/api/index.js' || !req.url.startsWith('/api'))) {
-        req.url = matchedPath;
+    if (req.url === '/api/index.js' || req.url === '/api/index' || req.url === '/api') {
+        const originalUri = req.headers['x-forwarded-uri'] || req.originalUrl;
+        if (originalUri && originalUri.startsWith('/api')) {
+            req.url = originalUri;
+        }
     }
     next();
 });
+
 
 app.use(express.static(__dirname));
 
@@ -149,7 +152,7 @@ app.post('/api/auth/login', async (req, res) => {
         const isHttps = Boolean(req.secure || req.headers['x-forwarded-proto'] === 'https' || isServerless);
         res.cookie('pos_token', token, {
             httpOnly: true,
-            sameSite: isHttps ? 'none' : 'lax',
+            sameSite: 'lax',
             secure: isHttps,
             maxAge: SESSION_DURATION
         });
@@ -770,7 +773,7 @@ app.server = server;
 app.io = io;
 module.exports = app;
 
-if (!process.env.VERCEL) {
+if (require.main === module && !process.env.VERCEL) {
     server.listen(PORT, '0.0.0.0', async () => {
         const ip = getLocalIPAddress();
         const lanUrl = `http://${ip}:${PORT}`;
