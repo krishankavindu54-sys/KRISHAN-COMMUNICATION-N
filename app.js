@@ -1746,45 +1746,61 @@ const app = {
 
         content.innerHTML = '<div class="flex items-center justify-center h-full"><i class="fa-solid fa-circle-notch fa-spin text-4xl text-violet-600"></i></div>';
 
-        switch (view) {
-            case 'dashboard':
-                await app.renderDashboard();
-                break;
-            case 'pos':
-                await app.renderPOS();
-                break;
-            case 'products':
-                await app.renderInventory();
-                break;
-            case 'repairs':
-                await app.renderRepairs();
-                break;
-            case 'sales':
-                await app.renderSalesHistory();
-                break;
-            case 'reports':
-                await app.renderReports();
-                break;
-            case 'expenses':
-                await app.renderExpenses();
-                break;
-            case 'credits':
-                await app.renderCredits();
-                break;
-            case 'utility':
-                await app.renderUtilityBills();
-                break;
-            case 'suppliers':
-                await app.renderSuppliers();
-                break;
-            case 'bank':
-                await app.renderBankTracker();
-                break;
-            case 'users':
-                await app.renderUsers();
-                break;
-            default:
-                app.renderDashboard();
+        try {
+            switch (view) {
+                case 'dashboard':
+                    await app.renderDashboard();
+                    break;
+                case 'pos':
+                    await app.renderPOS();
+                    break;
+                case 'products':
+                    await app.renderInventory();
+                    break;
+                case 'repairs':
+                    await app.renderRepairs();
+                    break;
+                case 'sales':
+                    await app.renderSalesHistory();
+                    break;
+                case 'reports':
+                    await app.renderReports();
+                    break;
+                case 'expenses':
+                    await app.renderExpenses();
+                    break;
+                case 'credits':
+                    await app.renderCredits();
+                    break;
+                case 'utility':
+                    await app.renderUtilityBills();
+                    break;
+                case 'suppliers':
+                    await app.renderSuppliers();
+                    break;
+                case 'bank':
+                    await app.renderBankTracker();
+                    break;
+                case 'users':
+                    await app.renderUsers();
+                    break;
+                default:
+                    await app.renderDashboard();
+            }
+        } catch (navErr) {
+            console.error(`Navigation error for view ${view}:`, navErr);
+            if (content) {
+                content.innerHTML = `
+                    <div class="p-8 text-center bg-white rounded-3xl border border-slate-200 shadow-sm max-w-lg mx-auto my-12">
+                        <i class="fa-solid fa-triangle-exclamation text-4xl text-amber-500 mb-3"></i>
+                        <h3 class="text-lg font-bold text-slate-800">Krishan POS</h3>
+                        <p class="text-sm text-slate-500 mt-1 mb-5">Click below to open Point of Sale</p>
+                        <button onclick="app.navigate('pos')" class="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold text-sm shadow-md">
+                            Go to POS Screen
+                        </button>
+                    </div>
+                `;
+            }
         }
     },
 
@@ -2479,121 +2495,158 @@ const app = {
 
     // --- DASHBOARD ---
     renderDashboard: async () => {
-        await app.ensureInitialData();
-        const today = new Date().toISOString().split('T')[0];
-        const salesToday = await db.sales.where('date').startsWith(today).toArray();
-        const totalRevenue = salesToday.reduce((sum, sale) => sum + sale.total, 0);
-        const pendingRepairs = await db.repairs.where('status').equals('Pending').count();
-        const lowStockItems = await db.items.filter(i => i.type === 'product' && i.stock <= (i.minStock || 5)).count();
+        try {
+            await app.ensureInitialData();
+            const today = new Date().toISOString().split('T')[0];
 
-        // Calculate comparison (mock for now, or fetch yesterday)
-        // Simple logic: just show specific stats
+            let salesToday = [];
+            try {
+                const allSales = await db.sales.toArray();
+                salesToday = (allSales || []).filter(s => s && s.date && String(s.date).startsWith(today));
+            } catch (e) {
+                console.warn('Could not read sales for dashboard:', e);
+            }
 
-        const html = `
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10 fade-in">
-                <div class="bg-gradient-to-br from-violet-500 to-indigo-600 p-8 rounded-3xl shadow-xl shadow-violet-200 text-white flex flex-col justify-between min-h-[160px]">
-                    <div class="flex justify-between items-start mb-4">
-                        <p class="text-violet-100 font-bold text-lg">Total Sales Today</p>
-                        <div class="bg-white/20 p-3.5 rounded-xl shadow-sm">
-                            <i class="fa-solid fa-coins text-3xl"></i>
+            const totalRevenue = salesToday.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+
+            let pendingRepairs = 0;
+            try {
+                const allRepairs = await db.repairs.toArray();
+                pendingRepairs = (allRepairs || []).filter(r => r && String(r.status || '').toLowerCase() === 'pending').length;
+            } catch (e) {
+                console.warn('Could not read repairs for dashboard:', e);
+            }
+
+            let lowStockItems = 0;
+            try {
+                const allItems = await db.items.toArray();
+                lowStockItems = (allItems || []).filter(i => i && i.type === 'product' && Number(i.stock || 0) <= Number(i.minStock || 5)).length;
+            } catch (e) {
+                console.warn('Could not read items for dashboard:', e);
+            }
+
+            const html = `
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10 fade-in">
+                    <div class="bg-gradient-to-br from-violet-500 to-indigo-600 p-8 rounded-3xl shadow-xl shadow-violet-200 text-white flex flex-col justify-between min-h-[160px]">
+                        <div class="flex justify-between items-start mb-4">
+                            <p class="text-violet-100 font-bold text-lg">Total Sales Today</p>
+                            <div class="bg-white/20 p-3.5 rounded-xl shadow-sm">
+                                <i class="fa-solid fa-coins text-3xl"></i>
+                            </div>
                         </div>
+                        <h2 class="text-5xl font-black tracking-tight">LKR ${totalRevenue.toFixed(2)}</h2>
                     </div>
-                    <h2 class="text-5xl font-black tracking-tight">LKR ${totalRevenue.toFixed(2)}</h2>
+
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-between min-h-[160px]">
+                        <div class="flex justify-between items-start mb-4">
+                            <p class="text-slate-500 font-bold text-lg">Pending Repairs</p>
+                            <div class="bg-orange-50 text-orange-600 p-3.5 rounded-xl border border-orange-100 shadow-sm">
+                                <i class="fa-solid fa-screwdriver-wrench text-3xl"></i>
+                            </div>
+                        </div>
+                        <h2 class="text-5xl font-black text-slate-800 tracking-tight">${pendingRepairs}</h2>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-between min-h-[160px]">
+                        <div class="flex justify-between items-start mb-4">
+                            <p class="text-slate-500 font-bold text-lg">Low Stock Items</p>
+                            <div class="bg-red-50 text-red-600 p-3.5 rounded-xl border border-red-100 shadow-sm">
+                                <i class="fa-solid fa-triangle-exclamation text-3xl"></i>
+                            </div>
+                        </div>
+                        <h2 class="text-5xl font-black text-red-600 tracking-tight">${lowStockItems}</h2>
+                    </div>
                 </div>
 
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-between min-h-[160px]">
-                    <div class="flex justify-between items-start mb-4">
-                        <p class="text-slate-500 font-bold text-lg">Pending Repairs</p>
-                        <div class="bg-orange-50 text-orange-600 p-3.5 rounded-xl border border-orange-100 shadow-sm">
-                            <i class="fa-solid fa-screwdriver-wrench text-3xl"></i>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 fade-in h-full pb-10" style="animation-delay: 0.1s">
+                    <!-- Recent Sales -->
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-black text-xl text-slate-800"><i class="fa-solid fa-clock-rotate-left mr-2 text-violet-600"></i> Recent Sales</h3>
+                            <button onclick="app.navigate('sales')" class="text-sm font-bold text-violet-600 hover:text-violet-800 transition-colors">View All &rarr;</button>
                         </div>
-                    </div>
-                    <h2 class="text-5xl font-black text-slate-800 tracking-tight">${pendingRepairs}</h2>
-                </div>
-
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-between min-h-[160px]">
-                    <div class="flex justify-between items-start mb-4">
-                        <p class="text-slate-500 font-bold text-lg">Low Stock Items</p>
-                        <div class="bg-red-50 text-red-600 p-3.5 rounded-xl border border-red-100 shadow-sm">
-                            <i class="fa-solid fa-triangle-exclamation text-3xl"></i>
-                        </div>
-                    </div>
-                    <h2 class="text-5xl font-black text-red-600 tracking-tight">${lowStockItems}</h2>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 fade-in h-full pb-10" style="animation-delay: 0.1s">
-                <!-- Recent Sales -->
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-black text-xl text-slate-800"><i class="fa-solid fa-clock-rotate-left mr-2 text-violet-600"></i> Recent Sales</h3>
-                        <button onclick="app.navigate('sales')" class="text-sm font-bold text-violet-600 hover:text-violet-800 transition-colors">View All &rarr;</button>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-base text-left">
-                            <thead class="text-sm text-slate-500 uppercase bg-slate-50 font-extrabold tracking-wider">
-                                <tr>
-                                    <th class="px-5 py-4 rounded-tl-xl border-b border-slate-100">Time</th>
-                                    <th class="px-5 py-4 border-b border-slate-100">Sale ID</th>
-                                    <th class="px-5 py-4 border-b border-slate-100">Total</th>
-                                    <th class="px-5 py-4 rounded-tr-xl border-b border-slate-100">Method</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                ${salesToday.length === 0 ? `<tr><td colspan="4" class="px-5 py-10 text-center text-slate-400 font-medium text-lg">No sales yet today</td></tr>` :
-                salesToday.slice(-5).reverse().map(sale => `
-                                    <tr class="hover:bg-slate-50 transition-colors">
-                                        <td class="px-5 py-4 font-bold text-slate-700">
-                                            ${new Date(sale.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </td>
-                                        <td class="px-5 py-4 text-slate-500 font-medium">#${sale.id}</td>
-                                        <td class="px-5 py-4 font-black text-emerald-600 text-lg">LKR ${sale.total.toFixed(2)}</td>
-                                        <td class="px-5 py-4">
-                                            <span class="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider">${sale.paymentMethod}</span>
-                                        </td>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-base text-left">
+                                <thead class="text-sm text-slate-500 uppercase bg-slate-50 font-extrabold tracking-wider">
+                                    <tr>
+                                        <th class="px-5 py-4 rounded-tl-xl border-b border-slate-100">Time</th>
+                                        <th class="px-5 py-4 border-b border-slate-100">Sale ID</th>
+                                        <th class="px-5 py-4 border-b border-slate-100">Total</th>
+                                        <th class="px-5 py-4 rounded-tr-xl border-b border-slate-100">Method</th>
                                     </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    ${salesToday.length === 0 ? `<tr><td colspan="4" class="px-5 py-10 text-center text-slate-400 font-medium text-lg">No sales yet today</td></tr>` :
+                    salesToday.slice(-5).reverse().map(sale => `
+                                        <tr class="hover:bg-slate-50 transition-colors">
+                                            <td class="px-5 py-4 font-bold text-slate-700">
+                                                ${new Date(sale.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </td>
+                                            <td class="px-5 py-4 text-slate-500 font-medium">#${sale.id}</td>
+                                            <td class="px-5 py-4 font-black text-emerald-600 text-lg">LKR ${Number(sale.total || 0).toFixed(2)}</td>
+                                            <td class="px-5 py-4">
+                                                <span class="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider">${sale.paymentMethod || 'cash'}</span>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
 
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
-                    <h3 class="font-black text-xl mb-6 text-slate-800"><i class="fa-solid fa-bolt mr-2 text-violet-600"></i> Quick Actions</h3>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-6 h-full pb-4">
-                        <button onclick="app.navigate('pos')" class="p-6 bg-violet-50 hover:bg-violet-100 rounded-2xl text-violet-700 transition flex flex-col items-center justify-center gap-3 border border-violet-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
-                            <i class="fa-solid fa-cash-register text-5xl mb-2"></i>
-                            <span class="font-bold text-lg">New Sale</span>
-                        </button>
-                        <button onclick="app.openRepairModal()" class="p-6 bg-orange-50 hover:bg-orange-100 rounded-2xl text-orange-700 transition flex flex-col items-center justify-center gap-3 border border-orange-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
-                            <i class="fa-solid fa-tools text-5xl mb-2"></i>
-                            <span class="font-bold text-lg">New Repair</span>
-                        </button>
-                        <button onclick="app.navigate('products')" class="p-6 bg-blue-50 hover:bg-blue-100 rounded-2xl text-blue-700 transition flex flex-col items-center justify-center gap-3 border border-blue-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
-                            <i class="fa-solid fa-box-open text-5xl mb-2"></i>
-                            <span class="font-bold text-lg">Add Stock</span>
-                        </button>
-                        <button onclick="app.openExpenseModal()" class="p-6 bg-red-50 hover:bg-red-100 rounded-2xl text-red-700 transition flex flex-col items-center justify-center gap-3 border border-red-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
-                             <i class="fa-solid fa-receipt text-5xl mb-2"></i>
-                            <span class="font-bold text-lg">Log Expense</span>
-                        </button>
-                        <button onclick="app.navigate('utility')" class="p-6 bg-emerald-50 hover:bg-emerald-100 rounded-2xl text-emerald-700 transition flex flex-col items-center justify-center gap-3 border border-emerald-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
-                             <i class="fa-solid fa-bolt-lightning text-5xl mb-2"></i>
-                            <span class="font-bold text-lg">Utility Pay</span>
-                        </button>
-                        <button onclick="app.navigate('bank')" class="p-6 bg-blue-50 hover:bg-blue-100 rounded-2xl text-blue-700 transition flex flex-col items-center justify-center gap-3 border border-blue-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
-                             <i class="fa-solid fa-building-columns text-5xl mb-2"></i>
-                            <span class="font-bold text-lg">Bank Tracker</span>
-                        </button>
-                        <button onclick="app.navigate('suppliers')" class="p-6 bg-orange-50 hover:bg-orange-100 rounded-2xl text-orange-700 transition flex flex-col items-center justify-center gap-3 border border-orange-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
-                             <i class="fa-solid fa-truck-field text-5xl mb-2"></i>
-                            <span class="font-bold text-lg">Suppliers</span>
-                        </button>
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+                        <h3 class="font-black text-xl mb-6 text-slate-800"><i class="fa-solid fa-bolt mr-2 text-violet-600"></i> Quick Actions</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-6 h-full pb-4">
+                            <button onclick="app.navigate('pos')" class="p-6 bg-violet-50 hover:bg-violet-100 rounded-2xl text-violet-700 transition flex flex-col items-center justify-center gap-3 border border-violet-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
+                                <i class="fa-solid fa-cash-register text-5xl mb-2"></i>
+                                <span class="font-bold text-lg">New Sale</span>
+                            </button>
+                            <button onclick="app.openRepairModal()" class="p-6 bg-orange-50 hover:bg-orange-100 rounded-2xl text-orange-700 transition flex flex-col items-center justify-center gap-3 border border-orange-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
+                                <i class="fa-solid fa-tools text-5xl mb-2"></i>
+                                <span class="font-bold text-lg">New Repair</span>
+                            </button>
+                            <button onclick="app.navigate('products')" class="p-6 bg-blue-50 hover:bg-blue-100 rounded-2xl text-blue-700 transition flex flex-col items-center justify-center gap-3 border border-blue-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
+                                <i class="fa-solid fa-box-open text-5xl mb-2"></i>
+                                <span class="font-bold text-lg">Add Stock</span>
+                            </button>
+                            <button onclick="app.openExpenseModal()" class="p-6 bg-red-50 hover:bg-red-100 rounded-2xl text-red-700 transition flex flex-col items-center justify-center gap-3 border border-red-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
+                                 <i class="fa-solid fa-receipt text-5xl mb-2"></i>
+                                <span class="font-bold text-lg">Log Expense</span>
+                            </button>
+                            <button onclick="app.navigate('utility')" class="p-6 bg-emerald-50 hover:bg-emerald-100 rounded-2xl text-emerald-700 transition flex flex-col items-center justify-center gap-3 border border-emerald-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
+                                 <i class="fa-solid fa-bolt-lightning text-5xl mb-2"></i>
+                                <span class="font-bold text-lg">Utility Pay</span>
+                            </button>
+                            <button onclick="app.navigate('bank')" class="p-6 bg-blue-50 hover:bg-blue-100 rounded-2xl text-blue-700 transition flex flex-col items-center justify-center gap-3 border border-blue-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
+                                 <i class="fa-solid fa-building-columns text-5xl mb-2"></i>
+                                <span class="font-bold text-lg">Bank Tracker</span>
+                            </button>
+                            <button onclick="app.navigate('suppliers')" class="p-6 bg-orange-50 hover:bg-orange-100 rounded-2xl text-orange-700 transition flex flex-col items-center justify-center gap-3 border border-orange-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
+                                 <i class="fa-solid fa-truck-field text-5xl mb-2"></i>
+                                <span class="font-bold text-lg">Suppliers</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
-        document.getElementById('app-content').innerHTML = html;
+            `;
+            const content = document.getElementById('app-content');
+            if (content) content.innerHTML = html;
+        } catch (dashboardErr) {
+            console.error('Error rendering dashboard:', dashboardErr);
+            const content = document.getElementById('app-content');
+            if (content) {
+                content.innerHTML = `
+                    <div class="p-8 text-center bg-white rounded-3xl border border-slate-200 shadow-sm max-w-lg mx-auto my-12">
+                        <i class="fa-solid fa-chart-pie text-5xl text-violet-600 mb-4"></i>
+                        <h3 class="text-xl font-black text-slate-800">Krishan POS Dashboard</h3>
+                        <p class="text-sm text-slate-500 mt-2 mb-6">System ready. Click below to start a new sale.</p>
+                        <button onclick="app.navigate('pos')" class="px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-violet-500/25">
+                            Open POS Register
+                        </button>
+                    </div>
+                `;
+            }
+        }
     },
 
     // --- POS & SALES ---

@@ -635,7 +635,97 @@
 
         <!-- Dynamic Content Area (with responsive padding and mobile bottom margin) -->
         <div id="app-content" class="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 pb-20 lg:pb-8 relative">
-            <!-- Views will be injected here via JavaScript -->
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10 fade-in">
+                <div class="bg-gradient-to-br from-violet-500 to-indigo-600 p-8 rounded-3xl shadow-xl shadow-violet-200 text-white flex flex-col justify-between min-h-[160px]">
+                    <div class="flex justify-between items-start mb-4">
+                        <p class="text-violet-100 font-bold text-lg">Total Sales Today</p>
+                        <div class="bg-white/20 p-3.5 rounded-xl shadow-sm">
+                            <i class="fa-solid fa-coins text-3xl"></i>
+                        </div>
+                    </div>
+                    <h2 class="text-5xl font-black tracking-tight">LKR 0.00</h2>
+                </div>
+
+                <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between min-h-[160px]">
+                    <div class="flex justify-between items-start mb-4">
+                        <p class="text-slate-500 dark:text-slate-400 font-bold text-lg">Pending Repairs</p>
+                        <div class="bg-orange-50 text-orange-600 p-3.5 rounded-xl border border-orange-100 shadow-sm">
+                            <i class="fa-solid fa-screwdriver-wrench text-3xl"></i>
+                        </div>
+                    </div>
+                    <h2 class="text-5xl font-black text-slate-800 dark:text-slate-100 tracking-tight">0</h2>
+                </div>
+
+                <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between min-h-[160px]">
+                    <div class="flex justify-between items-start mb-4">
+                        <p class="text-slate-500 dark:text-slate-400 font-bold text-lg">Low Stock Items</p>
+                        <div class="bg-red-50 text-red-600 p-3.5 rounded-xl border border-red-100 shadow-sm">
+                            <i class="fa-solid fa-triangle-exclamation text-3xl"></i>
+                        </div>
+                    </div>
+                    <h2 class="text-5xl font-black text-red-600 tracking-tight">0</h2>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 fade-in h-full pb-10" style="animation-delay: 0.1s">
+                <!-- Recent Sales -->
+                <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-black text-xl text-slate-800 dark:text-slate-100"><i class="fa-solid fa-clock-rotate-left mr-2 text-violet-600"></i> Recent Sales</h3>
+                        <button onclick="app.navigate('sales')" class="text-sm font-bold text-violet-600 hover:text-violet-800 transition-colors">View All &rarr;</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-base text-left">
+                            <thead class="text-sm text-slate-500 uppercase bg-slate-50 dark:bg-slate-900/50 font-extrabold tracking-wider">
+                                <tr>
+                                    <th class="px-5 py-4 rounded-tl-xl border-b border-slate-100 dark:border-slate-700">Time</th>
+                                    <th class="px-5 py-4 border-b border-slate-100 dark:border-slate-700">Sale ID</th>
+                                    <th class="px-5 py-4 border-b border-slate-100 dark:border-slate-700">Total</th>
+                                    <th class="px-5 py-4 rounded-tr-xl border-b border-slate-100 dark:border-slate-700">Method</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="4" class="px-5 py-10 text-center text-slate-400 font-medium text-lg">No sales yet today</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <h3 class="font-black text-xl mb-6 text-slate-800 dark:text-slate-100"><i class="fa-solid fa-bolt mr-2 text-violet-600"></i> Quick Actions</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-6 h-full pb-4">
+                        <button onclick="app.navigate('pos')" class="p-6 bg-violet-50 hover:bg-violet-100 rounded-2xl text-violet-700 transition flex flex-col items-center justify-center gap-3 border border-violet-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
+                            <i class="fa-solid fa-cash-register text-5xl mb-2"></i>
+                            <span class="font-bold text-lg">New Sale</span>
+                        </button>
+                        <button onclick="app.openRepairModal()" class="p-6 bg-orange-50 hover:bg-orange-100 rounded-2xl text-orange-700 transition flex flex-col items-center justify-center gap-3 border border-orange-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
+                            <i class="fa-solid fa-tools text-5xl mb-2"></i>
+                            <span class="font-bold text-lg">New Repair</span>
+                        </button>
+                        <button onclick="app.navigate('products')" class="p-6 bg-blue-50 hover:bg-blue-100 rounded-2xl text-blue-700 transition flex flex-col items-center justify-center gap-3 border border-blue-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
+                            <i class="fa-solid fa-box-open text-5xl mb-2"></i>
+                            <span class="font-bold text-lg">Add Stock</span>
+                        </button>
+                        <button onclick="app.openExpenseModal()" class="p-6 bg-red-50 hover:bg-red-100 rounded-2xl text-red-700 transition flex flex-col items-center justify-center gap-3 border border-red-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
+                             <i class="fa-solid fa-receipt text-5xl mb-2"></i>
+                            <span class="font-bold text-lg">Log Expense</span>
+                        </button>
+                        <button onclick="app.navigate('utility')" class="p-6 bg-emerald-50 hover:bg-emerald-100 rounded-2xl text-emerald-700 transition flex flex-col items-center justify-center gap-3 border border-emerald-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
+                             <i class="fa-solid fa-bolt-lightning text-5xl mb-2"></i>
+                            <span class="font-bold text-lg">Utility Pay</span>
+                        </button>
+                        <button onclick="app.navigate('bank')" class="p-6 bg-blue-50 hover:bg-blue-100 rounded-2xl text-blue-700 transition flex flex-col items-center justify-center gap-3 border border-blue-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
+                             <i class="fa-solid fa-building-columns text-5xl mb-2"></i>
+                            <span class="font-bold text-lg">Bank Tracker</span>
+                        </button>
+                        <button onclick="app.navigate('suppliers')" class="p-6 bg-orange-50 hover:bg-orange-100 rounded-2xl text-orange-700 transition flex flex-col items-center justify-center gap-3 border border-orange-100 shadow-sm hover:-translate-y-1 hover:shadow-md min-h-[140px]">
+                             <i class="fa-solid fa-truck-field text-5xl mb-2"></i>
+                            <span class="font-bold text-lg">Suppliers</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Mobile Bottom Quick Navigation Bar (Shown only on small screens) -->
@@ -692,14 +782,20 @@
     <!-- QRCode Generator Script -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-    <!-- Supabase Client Initialization -->
+    <!-- Supabase Client Initialization (Optional) -->
     <script>
         (function() {
-            const SUPABASE_URL = 'https://dzuycbqcltmlrktiszby.supabase.co';
-            const SUPABASE_ANON_KEY = 'sb_publishable_t89DAWTsAEzM5VrdUfdMlg_WPuvUTx6';
-            if (window.supabase && typeof window.supabase.createClient === 'function') {
-                window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                window.supabase = window.supabaseClient;
+            const customUrl = localStorage.getItem('krishan_pos_supabase_url');
+            const customKey = localStorage.getItem('krishan_pos_supabase_key');
+            if (customUrl && customKey && window.supabase && typeof window.supabase.createClient === 'function') {
+                try {
+                    window.supabaseClient = window.supabase.createClient(customUrl, customKey);
+                    window.supabase = window.supabaseClient;
+                } catch (e) {
+                    window.supabase = null;
+                }
+            } else {
+                window.supabase = null;
             }
         })();
     </script>
